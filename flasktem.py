@@ -6,7 +6,10 @@ from flask import flash
 from flask_sqlalchemy import SQLAlchemy 
 from flask_bootstrap import Bootstrap 
 from flask_script import Manager
-from flask_migrate import Migrate,MigrateCommand 
+from flask_migrate import Migrate,MigrateCommand
+from flask_wtf import Form 
+from wtforms import StringField,PasswordField,SubmitField,DateField
+from wtforms.validators import DataRequired,EqualTo,Length,Email 
 import pymysql
 
 app = Flask(__name__)
@@ -32,7 +35,7 @@ manager = Manager(app)
 manager.add_command("db",MigrateCommand)#配置迁移命令
 
  
-#类
+#数据类
 class User(db.Model):
 	__tablename__="users"
 	id=db.Column(db.Integer,primary_key=True)
@@ -47,6 +50,14 @@ class Role(db.Model):#需继承模型
 	id = db.Column(db.Integer,primary_key=True)#设置id为主键
 	name = db.Column(db.String(50),unique=True)#表示name为字符串，不重复
 	users = db.relationship("User",backref='role') #关联user模型，并在user中添加反向引用（backfef）
+
+#表单类
+class RegisterForm(Form):
+    username = StringField("请输入用户名", validators=[DataRequired()])
+    password = PasswordField("请输入密码", validators=[DataRequired()])
+    birthday = DateField("出生日期")
+    email = StringField("邮箱地址", validators=[Email()])
+    submit = SubmitField("提交")
 
 #路由
 @app.route("/login",methods=["GET"])
@@ -67,31 +78,16 @@ def loginPost():
 
 @app.route("/register",methods=["GET"])
 def register():
-	return render_template("/register.html")
-
-@app.route("/register",methods=["POST"])
-def registerPost():
-	user = User();
-	user.username = request.form.get("username","")
-	user.password = request.form.get("password","")
-	user.email = request.form.get("email","")
-	user.birthday= request.form.get("birthday","")
-	user.role_id = 1
-	if (len(user.username.strip())==0):
-		flash("用户名不能为空")
-		return render_template("/register.html")
-	if (len(user.password.strip())==0):
-		flash("密码不能为空")
-		return render_template("/register.html")
-	if (len(user.email.strip())==0):
-		flash("邮箱不能为空")
-		return render_template("/register.html")
-	if (len(user.birthday.strip())==0):
-		flash("生日不能为空")
-		return render_template("/register.html")
-	db.session.add(user);
-	flash("您已注册成功")
-	return render_template("/register.html")
+    form=RegisterForm()
+    if form.validate_on_submit():
+        user=User()
+        user.username=form.username.data
+        user.password=form.password.data
+        user.birthday=form.birthday.data
+        user.email=form.email.data
+        user.role_id=1           
+        db.session.add(user)
+    return  render_template("/register.html",form=form)
 
 if __name__ == '__main__':
 	app.run(debug=True)
