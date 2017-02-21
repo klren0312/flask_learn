@@ -82,6 +82,7 @@ def register():
             username=form.username.data,
             password=form.password.data
         )
+        #判断是否用户名已经注册，防止报错
         if(User.query.filter_by(username=user.username).first()):
             flash("当前用户名已经注册！")
             return render_template("/register.html", form=form)
