@@ -41,53 +41,47 @@ class User(db.Model):
 	id=db.Column(db.Integer,primary_key=True)
 	username = db.Column(db.String(50),unique=True,index=True) #此列带索引
 	password=db.Column(db.String(50))
-	email = db.Column(db.String(100))
-	birthday = db.Column(db.DateTime)
-	role_id=db.Column(db.Integer,db.ForeignKey("roles.id"))#外键指向roles表中的id列
 
-class Role(db.Model):#需继承模型
-	__tablename__ = "roles"	#db中表明，如果不设置则会与类名相同
-	id = db.Column(db.Integer,primary_key=True)#设置id为主键
-	name = db.Column(db.String(50),unique=True)#表示name为字符串，不重复
-	users = db.relationship("User",backref='role') #关联user模型，并在user中添加反向引用（backfef）
 
 #表单类
+class LoginForm(Form):
+	username = StringField("请输入用户名", validators=[DataRequired()])
+	password = PasswordField("请输入密码", validators=[DataRequired()])
+	submit = SubmitField("登录")
 class RegisterForm(Form):
     username = StringField("请输入用户名", validators=[DataRequired()])
     password = PasswordField("请输入密码", validators=[DataRequired()])
-    birthday = DateField("出生日期")
-    email = StringField("邮箱地址", validators=[Email()])
-    submit = SubmitField("提交")
+    submit = SubmitField("注册")
+
 
 #路由
-@app.route("/login",methods=["GET"])
+@app.route("/login",methods=["GET","POST"])
 def login():
-	return render_template("/btlogin.html")
+	form = LoginForm()
+	if form.validate_on_submit():
+		username = form.username.data
+		password = form.password.data
+		user = User.query.filter_by(username=username,password=password).first()
+		if user is not None:
+			session["user"] = username
+			return render_template("/index.html",name=username,site_name='myblog')
+		else:
+			flash("您输入的用户名或密码错误")
+			return render_template("/btlogin.html",form=form)
+	return render_template("/btlogin.html",form=form)
 
-@app.route("/login",methods=["POST"])
-def loginPost():
-	username=request.form.get("username","")
-	password=request.form.get("password","")
-	user = User.query.filter_by(username=username,password=password).first()#数据库查询
-	if user is not None:
-		session["user"] = username
-		return render_template("/index.html",name=username,site_name='myblog')
-	else:
-		flash("您输入的用户名或密码错误")
-		return render_template("/btlogin.html")
-
-@app.route("/register",methods=["GET"])
+@app.route("/register",methods=["GET","POST"])
 def register():
     form=RegisterForm()
     if form.validate_on_submit():
-        user=User()
-        user.username=form.username.data
-        user.password=form.password.data
-        user.birthday=form.birthday.data
-        user.email=form.email.data
-        user.role_id=1           
+        user=User(
+        username=form.username.data,
+        password=form.password.data,
+ 	 	)         
         db.session.add(user)
+
     return  render_template("/register.html",form=form)
+    
 
 if __name__ == '__main__':
 	app.run(debug=True)
